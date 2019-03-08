@@ -1,0 +1,3 @@
+[submodule "pytorch_wavelets"]
+	path = pytorch_wavelets
+	url = https://github.com/fbcotter/pytorch_wavelets
