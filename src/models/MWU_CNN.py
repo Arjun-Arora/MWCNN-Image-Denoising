@@ -6,7 +6,7 @@ from MWCNN import WCNN,IWCNN
 
 def init_weights(m):
     if type(m) == nn.Conv2d:
-        nn.init.xavier_uniform(m.weight)
+        nn.init.xavier_uniform_(m.weight)
         m.bias.data.fill_(0.01)
 
 class MW_Unet(nn.Module):

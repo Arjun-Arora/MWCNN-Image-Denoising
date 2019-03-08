@@ -132,6 +132,7 @@ class patchesDataset(Dataset):
         :param n: how many patches to load if patches_path is filled, otherwise n original images to load (approx ~24 * n)
         """
         self.patches_target,patches_path = load_patches(patches_path=patches_path, Train=True, patch_sz=patch_sz,n=n)
+        self.patches_target = self.patches_target[:,np.newaxis,:,:]
         # noise = np.random.normal(np.mean(self.patches_target,axis=0), noise_level,(n,patch_sz[0],patch_sz[1]))
         # noise = np.random.normal(0, noise_level, (n, patch_sz[0], patch_sz[1]))
         # print(noise)
@@ -143,13 +144,13 @@ class patchesDataset(Dataset):
 
         # print(np.mean(self.patches_target[0,:,:]))
         rand_idx = np.random.randint(0,self.patches_target.shape[0])
-        sample_target = self.patches_target[1,:,:]
-        sample_noise = self.patches_noisy[1,:,:]
+        sample_target = self.patches_target[1,0,:,:]
+        sample_noise = self.patches_noisy[1,0,:,:]
 
         # print(sample_noise)
 
 
-        show_images([sample_noise,sample_target], cols=1, titles=['Noisy image', 'Target image'])
+        # show_images([sample_noise,sample_target], cols=1, titles=['Noisy image', 'Target image'])
 
     def __len__(self):
         return self.patches_noisy.shape[0]
@@ -173,4 +174,4 @@ class patchesDataset(Dataset):
 
 # load_imgs("./data/Train/")
 # load_patches("./data/patches_Train/")
-patchesDataset(patches_path="./data/patches_Train/",n=100)
+patchesDataset(patches_path="./data/patches_Train/",n=-1)
