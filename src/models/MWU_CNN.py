@@ -23,14 +23,17 @@ class MW_Unet(nn.Module):
         :return:
         '''
         super(MW_Unet,self).__init__()
+        channel_1 = 16
+        channel_2 = 32
+        print("channel_1: {}, channel_2: {}".format(channel_1,channel_2))
         self.num_conv = num_conv
         self.in_ch = in_ch
-        self.cnn_1 = WCNN(in_ch=in_ch,out_ch=160,num_conv=num_conv) #output N,160,H/2,W/2
-        self.cnn_2 = WCNN(in_ch=160,out_ch=256,num_conv=num_conv)
-        self.cnn_3 = WCNN(in_ch=256,out_ch=256,num_conv=num_conv)
-        self.icnn_3 = IWCNN(in_ch=256,internal_ch=1024,num_conv=num_conv)
-        self.icnn_2 = IWCNN(in_ch=2*256,internal_ch=640,num_conv=num_conv) #expecting 2*256 because of skip connection
-        self.icnn_1 = IWCNN(in_ch=2*160,internal_ch=self.in_ch*4,num_conv=num_conv) # output N,in_ch,H,W
+        self.cnn_1 = WCNN(in_ch=in_ch,out_ch=channel_1,num_conv=num_conv) #output N,160,H/2,W/2
+        self.cnn_2 = WCNN(in_ch=channel_1,out_ch=channel_2,num_conv=num_conv)
+        self.cnn_3 = WCNN(in_ch=channel_2,out_ch=channel_2,num_conv=num_conv)
+        self.icnn_3 = IWCNN(in_ch=channel_2,internal_ch=4*channel_2,num_conv=num_conv)
+        self.icnn_2 = IWCNN(in_ch=2*channel_2,internal_ch=4*channel_1,num_conv=num_conv) #expecting 2*256 because of skip connection
+        self.icnn_1 = IWCNN(in_ch=2*channel_1,internal_ch=self.in_ch*4,num_conv=num_conv) # output N,in_ch,H,W
         self.final_conv = nn.Conv2d(in_channels=self.in_ch,out_channels=self.in_ch,kernel_size=3,padding=1)
 
     def forward(self,x):

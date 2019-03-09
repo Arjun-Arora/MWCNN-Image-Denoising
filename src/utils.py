@@ -172,6 +172,6 @@ class patchesDataset(Dataset):
 
 # load_imgs("./data/Train/")
 # load_patches("./data/patches_Train/")
-patchesDataset(patches_path="./data/patches_Train/",n=-1)
+# patchesDataset(patches_path="./data/patches_Train/",n=-1)
 # patchesDataset(patches_path=None,n=-1)
 # patchesDataset(patches_path=None,n=-1)
