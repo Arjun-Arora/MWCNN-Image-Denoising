@@ -75,10 +75,10 @@ def load_patches(patches_path=None,Train=True,patch_sz =(240,240),n=-1 ):
     if patches_path is None:
         if Train:
             imgs = load_imgs("./data/Train/",n=n)
-            patches_path = "./data/patches_Train/"
+            patches_path = "./data/patches/"
         else:
             imgs = load_imgs("./data/Test/",n=n)
-            patches_path = "./data/patches_Test/"
+            patches_path = "./data/patches/"
 
         patches = []
         print("making patches")
@@ -171,7 +171,7 @@ class patchesDataset(Dataset):
         return sample
 
 # load_imgs("./data/Train/")
-# load_patches("./data/patches_Train/")
-# patchesDataset(patches_path="./data/patches_Train/",n=-1)
+# load_patches("./data/patches/")
+# patchesDataset(patches_path="./data/patchesn/",n=-1)
 # patchesDataset(patches_path=None,n=-1)
 # patchesDataset(patches_path=None,n=-1)
