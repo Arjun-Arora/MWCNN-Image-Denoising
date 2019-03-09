@@ -81,20 +81,17 @@ def load_patches(patches_path=None,Train=True,patch_sz =(240,240),n=-1 ):
             patches_path = "./data/patches_Test/"
 
         patches = []
-        print("loading patches")
+        print("making patches")
         with tqdm(total = len(imgs)) as pbar:
             for img in imgs:
                 patch = image.extract_patches_2d(img,patch_sz,max_patches=24)
-                # patch = as_strided(img, shape=(img.shape[0] - (patch_sz[0]-1), img.shape[1] - (patch_sz[1]-1), patch_sz[0], patch_sz[1]),
-                #                          strides=img.strides + img.strides, writeable=True)
-                # for patch_img in patch.reshape(-1, patch_sz[0],patch_sz[1]):
                 for j in range(patch.shape[0]):
                     patches.append(patch[j,:,:])
                 pbar.update(1)
-        print("completed loading patches!")
+        print("completed making patches!")
         if Train and not os.path.isdir(patches_path):
             os.makedirs(patches_path)
-        elif not Train and not patches_path:
+        elif not Train and not os.path.isdir(patches_path):
             os.makedirs(patches_path)
         print("writing patches")
         with tqdm(total=len(patches)) as pbar:
@@ -103,7 +100,8 @@ def load_patches(patches_path=None,Train=True,patch_sz =(240,240),n=-1 ):
                 sk.io.imsave(fname,patches[i])
                 pbar.update(1)
         print("finished writing patches to directory!")
-        patches = np.vstack(patches)
+        patches = np.array(patches)
+
     else:
         print("loading patches from patches directory")
         patches = []
@@ -113,7 +111,6 @@ def load_patches(patches_path=None,Train=True,patch_sz =(240,240),n=-1 ):
                 # print(filename)
                 patch = plt.imread(filename)
                 patch = sk.img_as_float(patch)
-
                 patches.append(patch)
                 # print("shape of current image: {}".format(imgs_list[-1].shape))
                 # plt.show(patch)
@@ -132,6 +129,7 @@ class patchesDataset(Dataset):
         :param n: how many patches to load if patches_path is filled, otherwise n original images to load (approx ~24 * n)
         """
         self.patches_target,patches_path = load_patches(patches_path=patches_path, Train=True, patch_sz=patch_sz,n=n)
+        print(self.patches_target.shape)
         self.patches_target = self.patches_target[:,np.newaxis,:,:]
         # noise = np.random.normal(np.mean(self.patches_target,axis=0), noise_level,(n,patch_sz[0],patch_sz[1]))
         # noise = np.random.normal(0, noise_level, (n, patch_sz[0], patch_sz[1]))
@@ -175,3 +173,5 @@ class patchesDataset(Dataset):
 # load_imgs("./data/Train/")
 # load_patches("./data/patches_Train/")
 patchesDataset(patches_path="./data/patches_Train/",n=-1)
+# patchesDataset(patches_path=None,n=-1)
+# patchesDataset(patches_path=None,n=-1)
