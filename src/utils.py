@@ -121,7 +121,7 @@ def load_patches(patches_path=None,Train=True,patch_sz =(240,240),n=-1 ):
     return patches, patches_path
 
 class patchesDataset(Dataset):
-    def __init__(self, patches_path=None, patch_sz=(240,240),noise_level=15,n=-1):
+    def __init__(self, patches_path=None, patch_sz=(240,240),noise_level=15,noise_type='gaussian',n=-1):
         """
         :param patches_path: path to patches
         :param patch_sz: size of patches to load
@@ -136,19 +136,25 @@ class patchesDataset(Dataset):
         # print(noise)
         # print(self.patches_target.shape)
         # print(noise/255)
-        self.patches_noisy = self.patches_target + noise_level/255 * np.random.randn(*patch_sz).astype('f')
+        print("noise_type: ",noise_type )
+        if noise_type == 'gaussian':
+            std_dev = noise_level
+        elif noise_type == 'mixture': #mixture gaussian and poisson shot noise based on pixel values
+            std_dev = np.sqrt(np.power(noise_level,2) + np.power(self.patches_target,2))
+
+        self.patches_noisy = self.patches_target + std_dev / 255 * np.random.randn(*patch_sz).astype('f')
         print("shape of target: {} shape of noisy: {}".format(self.patches_noisy.shape,self.patches_target.shape))
 
 
         # print(np.mean(self.patches_target[0,:,:]))
         rand_idx = np.random.randint(0,self.patches_target.shape[0])
-        sample_target = self.patches_target[1,0,:,:]
-        sample_noise = self.patches_noisy[1,0,:,:]
+        sample_target = self.patches_target[rand_idx,0,:,:]
+        sample_noise = self.patches_noisy[rand_idx,0,:,:]
 
         # print(sample_noise)
 
 
-        # show_images([sample_noise,sample_target], cols=1, titles=['Noisy image', 'Target image'])
+        show_images([sample_noise,sample_target], cols=1, titles=['Noisy image', 'Target image'])
 
     def __len__(self):
         return self.patches_noisy.shape[0]
@@ -172,6 +178,7 @@ class patchesDataset(Dataset):
 
 # load_imgs("./data/Train/")
 # load_patches("./data/patches/")
-# patchesDataset(patches_path="./data/patchesn/",n=-1)
+if __name__ == "__main__":
+    patchesDataset(patches_path="./data/patches/",n=1000,noise_type='mixture')
 # patchesDataset(patches_path=None,n=-1)
 # patchesDataset(patches_path=None,n=-1)
