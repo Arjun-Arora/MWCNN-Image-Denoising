@@ -15,6 +15,7 @@ from sklearn.feature_extraction import image
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
+import matplotlib.pyplot as plt
 
 from numpy.lib.stride_tricks import as_strided
 
@@ -176,9 +177,56 @@ class patchesDataset(Dataset):
         sample = {'target':patch_target, 'input':patch_noisy}
         return sample
 
+
+def make_plots(experiment_dir,epochs = 20):
+    """
+    :param experiment_dir: directory where .npy files are kept
+    :param epochs: number of epochs for each plot for val and train
+    :return: saves plots for Val and Train Loss  vs. Epoch and Train and Val PSNR vs. Epoch
+    """
+    train_PSNRs_path = experiment_dir + '/train_PSNRs.npy'
+    train_losses_path = experiment_dir + '/train_losses.npy'
+    val_PSNRs_path = experiment_dir + '/val_PSNRs.npy'
+    val_losses_path = experiment_dir + '/val_losses.npy'
+
+    train_PSNRs = np.load(train_PSNRs_path)
+    val_PSNRs = np.load(val_PSNRs_path)
+
+    train_losses = np.load(train_losses_path)
+    val_losses = np.load(val_losses_path)
+
+    x = np.linspace(1,epochs,len(train_PSNRs))
+    loss_fig = plt.figure()
+    plt.xlabel('epochs')
+    plt.ylabel('Log MSE loss')
+    plt.title('Log MSE per Epoch ')
+    train_plt, = plt.plot(x,np.log(train_losses),alpha=0.5)
+    val_plt, = plt.plot(x,np.log(val_losses),alpha=0.5)
+    plt.legend([train_plt, val_plt],['train_loss','val_loss'])
+
+    loss_fig.savefig(experiment_dir + '/loss_vs_epoch.png')
+
+    PSNR_fig = plt.figure()
+    plt.xlabel('epochs')
+    plt.ylabel("PSNR (dB)")
+    plt.title('PSNR per Epoch')
+    train_PSNR_plt, = plt.plot(x, train_PSNRs,alpha=0.5)
+    val_PSNR_plt, = plt.plot(x, val_PSNRs,alpha=0.5)
+    plt.legend([train_PSNR_plt, val_PSNR_plt], ['train_PSNR', 'val_PSNR'])
+
+    PSNR_fig.savefig(experiment_dir + '/PSNR_vs_epoch.png')
+
+
+
+
+
+
+
+
 # load_imgs("./data/Train/")
 # load_patches("./data/patches/")
 if __name__ == "__main__":
-    patchesDataset(patches_path="./data/patches/",n=1000,noise_type='mixture')
+    # patchesDataset(patches_path="./data/patches/",n=1000,noise_type='mixture')
+    make_plots('./experiments/baseline')
 # patchesDataset(patches_path=None,n=-1)
 # patchesDataset(patches_path=None,n=-1)
