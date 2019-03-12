@@ -142,8 +142,24 @@ class patchesDataset(Dataset):
             std_dev = noise_level
         elif noise_type == 'mixture': #mixture gaussian and poisson shot noise based on pixel values
             std_dev = np.sqrt(np.power(noise_level,2) + np.power(self.patches_target,2))
+        elif noise_type == 's&p':
+            N,C,H,W  = self.patches_target.shape
 
-        self.patches_noisy = self.patches_target + std_dev / 255 * np.random.randn(*patch_sz).astype('f')
+            s_vs_p = 0.5
+            amount = 0.04
+            self.patches_noisy = np.copy(self.patches_target)
+            num_salt = np.ceil(amount * self.patches_target.size * s_vs_p)
+            coords = [np.random.randint(0, i, int(num_salt)) for i in self.patches_target.shape]
+            self.patches_noisy[coords] = 1
+
+            # Pepper mode
+            num_pepper = np.ceil(amount * self.patches_target.size * (1. - s_vs_p))
+            coords = [np.random.randint(0, i, int(num_pepper)) for i in self.patches_target.shape]
+            self.patches_noisy[coords] = 0
+
+
+        if noise_type == 'gaussian' or noise_type == 'mixture':
+            self.patches_noisy = self.patches_target + std_dev / 255 * np.random.randn(*patch_sz).astype('f')
         print("shape of target: {} shape of noisy: {}".format(self.patches_noisy.shape,self.patches_target.shape))
 
 
@@ -226,7 +242,10 @@ def make_plots(experiment_dir,epochs = 20):
 # load_imgs("./data/Train/")
 # load_patches("./data/patches/")
 if __name__ == "__main__":
-    # patchesDataset(patches_path="./data/patches/",n=1000,noise_type='mixture')
+    # patchesDataset(patches_path="./data/patches/",n=24000,noise_type='s&p')
     make_plots('./experiments/baseline')
+    make_plots('./experiments/mixture')
+    make_plots('./experiments/s&p')
+
 # patchesDataset(patches_path=None,n=-1)
 # patchesDataset(patches_path=None,n=-1)
