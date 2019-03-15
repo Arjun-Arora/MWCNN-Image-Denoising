@@ -105,21 +105,24 @@ def load_patches(patches_path=None,Train=True,patch_sz =(240,240),n=-1 ):
 
     else:
         print("loading patches from patches directory")
-        patches = []
+        patches = np.float(np.zeros((n,patch_sz[0],patch_sz[1])))
         file_paths = patches_path + "*.*"
+        ctr = 0
         with tqdm(total=len(glob.glob(file_paths)[:n])) as pbar:
             for filename in glob.glob(file_paths)[:n]:
                 # print(filename)
                 patch = plt.imread(filename)
                 patch = sk.img_as_float(patch)
-                patches.append(patch)
+                # patches.append(patch)
+                patches[ctr,:,:] = patch
                 # print("shape of current image: {}".format(imgs_list[-1].shape))
                 # plt.show(patch)
                 # plt.show()
                 pbar.update(1)
+                ctr += 1
         print("completed loading patches from directory!")
-        patches = np.array(patches)
-    return patches, patches_path
+        # patches = np.array(patches)
+    return np.float(patches), patches_path
 
 class patchesDataset(Dataset):
     def __init__(self, patches_path=None, patch_sz=(240,240),noise_level=15,noise_type='gaussian',n=-1):
@@ -178,8 +181,8 @@ class patchesDataset(Dataset):
 
     def __getitem__(self, idx):
 
-        patch_target = self.patches_target[idx,:,:]
-        patch_noisy = self.patches_noisy[idx,:,:]
+        patch_target = np.float(self.patches_target[idx,:,:])
+        patch_noisy = np.float(self.patches_noisy[idx,:,:])
         # img_name = os.path.join(self.root_dir,
         #                         self.landmarks_frame.iloc[idx, 0])
         # image = io.imread(img_name)
