@@ -4,18 +4,18 @@ import csv
 import skimage as sk
 import os
 import sys
-import pkgutil
-# search_path = ['.'] # set to None to see all modules importable from sys.path
-# all_modules = [x[1] for x in pkgutil.iter_modules(path=search_path)]
-# print(all_modules)
-# print(sys.path)
+sys.path.append("./src/models/")
+sys.path.append("./src/")
 import glob
 from tqdm import tqdm
 from sklearn.feature_extraction import image
-import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
 import matplotlib.pyplot as plt
+from MWU_CNN import MW_Unet
+import torch.nn as nn
+from skimage.measure import compare_ssim as ssim
+import torchvision
+
 
 from numpy.lib.stride_tricks import as_strided
 
@@ -237,10 +237,293 @@ def make_plots(experiment_dir,epochs = 20):
     PSNR_fig.savefig(experiment_dir + '/PSNR_vs_epoch.png')
 
 
+def imshow(img):
+    #     print('Image device and mean')
+    #     print(img.device)
+    #     print(img.mean())
+    output_image = img.cpu().numpy().transpose((1, 2, 0))
+    npimg = output_image.astype(np.uint8)
+    #     print('Mean of image: {}'.format(npimg.mean()))
+    # format H,W,C
+    plt.imshow(npimg)
+    plt.show()
+
+def save_image(img, path):
+    #     img = img * 0.5 + 0.5
+    torchvision.utils.save_image(img, path)
 
 
+def backprop(optimizer, model_output, target):
+    optimizer.zero_grad()
+    loss_fn = nn.MSELoss()
+    loss = loss_fn(model_output, target)
+    loss.backward()
+    optimizer.step()
+    return loss
 
 
+def get_PSNR(model_output, target):
+    I_hat = model_output.cpu().detach().numpy()
+    I = target.cpu().detach().numpy()
+    mse = (np.square(I - I_hat)).mean(axis=None)
+    PSNR = 10 * np.log10(1.0 / mse)
+    return PSNR
+
+
+def get_SSIM(model_output, target):
+    I_hat = model_output.cpu().detach().numpy()
+    I = target.cpu().detach().numpy()
+    N, C, H, W = I_hat.shape
+    ssim_out = []
+    for i in range(N):
+        img = I[i, 0, :, :]
+        img_noisy = I_hat[i, 0, :, :]
+        ssim_out.append(ssim(img, img_noisy, data_range=img_noisy.max() - img_noisy.min()))
+    return np.mean(ssim_out)
+
+
+def train(args):
+    """
+    train model
+    """
+
+    ####################################### Initializing Model #######################################
+
+    step = 0.01
+    experiment_dir = args['--experiment_dir']
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print_every = int(args['--print_every'])
+    num_epochs = int(args['--num_epochs'])
+    save_every = int(args['--save_every'])
+    save_path = str(args['--model_save_path'])
+    batch_size = int(args['--batch_size'])
+    train_data_path = args['--data_path']
+    n = int(args['--n'])
+    noise_type = args['--noise_type']
+    train_split, val_split = args['--train_split'], args['--val_split']
+
+    img_directory = args['--train_img_directory']
+
+    model = MW_Unet(num_conv=3, in_ch=1)
+    model.to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=step)
+
+    ######################################### Loading Data ##########################################
+    dataset_total = patchesDataset(patches_path=train_data_path, noise_type=noise_type, n=n)
+
+    train_max_idx = int(train_split * len(dataset_total))
+    #     print(train_max_idx)
+    dataset_train = torch.utils.data.Subset(dataset_total, range(0, train_max_idx))
+    val_max_idx = train_max_idx + int(val_split * len(dataset_total))
+    dataset_val = torch.utils.data.Subset(dataset_total, range(train_max_idx, val_max_idx))
+    #     print(test_max_idx)
+
+    #     dataset_test = torch.utils.data.Subset(dataset_total,range(val_max_idx,test_max_idx))
+
+    dataloader_train = DataLoader(dataset_train, batch_size=batch_size)
+    dataloader_val = DataLoader(dataset_val, batch_size=batch_size)
+
+    print("length of train set: ", len(dataset_train))
+    print("length of val set: ", len(dataset_val))
+    #     print("length of test set: ",len(dataset_test))
+
+    train_PSNRs = []
+    train_losses = []
+    val_PSNRs = []
+    val_losses = []
+    init_epoch = 0
+
+    best_val_PSNR = 0.0
+    try:
+        for epoch in range(1, num_epochs + 1):
+            # INITIATE dataloader_train
+            print("epoch: ", epoch)
+            with tqdm(total=len(dataloader_train)) as pbar:
+                for index, sample in enumerate(dataloader_train):
+
+                    model.train()
+
+                    target, model_input = sample['target'], sample['input']
+                    target = target.to(device)
+                    model_input = model_input.to(device)
+
+                    output = model.forward(model_input)
+
+                    train_loss = backprop(optimizer, output, target)
+
+                    train_PSNR = get_PSNR(output, target)
+
+                    avg_val_PSNR = []
+                    avg_val_loss = []
+                    model.eval()
+                    with torch.no_grad():
+                        for val_index, val_sample in enumerate(dataloader_val):
+                            target, model_input = val_sample['target'], val_sample['input']
+
+                            target = target.to(device)
+                            model_input = model_input.to(device)
+
+                            output = model.forward(model_input)
+                            loss_fn = nn.MSELoss()
+                            loss_val = loss_fn(output, target)
+                            PSNR = get_PSNR(output, target)
+                            avg_val_PSNR.append(PSNR)
+                            avg_val_loss.append(loss_val.cpu().detach().numpy())
+                    avg_val_PSNR = np.mean(avg_val_PSNR)
+                    avg_val_loss = np.mean(avg_val_loss)
+                    val_PSNRs.append(avg_val_PSNR)
+                    val_losses.append(avg_val_loss)
+
+                    train_losses.append(train_loss.cpu().detach().numpy())
+                    train_PSNRs.append(train_PSNR)
+
+                    if index == len(dataloader_train) - 1:
+                        img_grid = output.data
+                        img_grid = torchvision.utils.make_grid(img_grid)
+                        real_grid = target.data
+                        real_grid = torchvision.utils.make_grid(real_grid)
+                        directory = img_directory
+                        input_grid = model_input.data
+                        input_grid = torchvision.utils.make_grid(input_grid)
+                        save_image(input_grid, '{}train_input_img.png'.format(directory))
+                        save_image(img_grid, '{}train_img_{}.png'.format(directory, epoch))
+                        save_image(real_grid, '{}train_real_img_{}.png'.format(directory, epoch))
+                        print('train images')
+                        imshow(input_grid)
+                        imshow(img_grid)
+                        imshow(real_grid)
+
+                    pbar.update(1)
+                if epoch % print_every == 0:
+                    print("Epoch: {}, Loss: {}, Training PSNR: {}".format(epoch, train_loss, train_PSNR))
+                    print("Epoch: {}, Avg Val Loss: {},Avg Val PSNR: {}".format(epoch, avg_val_loss, avg_val_PSNR))
+                if epoch % save_every == 0 and best_val_PSNR < avg_val_PSNR:
+                    best_val_PSNR = avg_val_PSNR
+                    print("new best Avg Val PSNR: {}".format(best_val_PSNR))
+                    print("Saving model to {}".format(save_path))
+                    torch.save({'epoch': epoch,
+                                'model_state_dict': model.state_dict(),
+                                'optimizer_state_dict': optimizer.state_dict(),
+                                'loss': train_loss},
+                               save_path)
+                    print("Saved successfully to {}".format(save_path))
+
+
+    except KeyboardInterrupt:
+        print("Training interupted...")
+        print("Saving model to {}".format(save_path))
+        torch.save({'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'loss': train_loss},
+                   save_path)
+        print("Saved successfully to {}".format(save_path))
+
+    print("Training completed.")
+
+    return (train_losses, train_PSNRs, val_losses, val_PSNRs, best_val_PSNR)
+
+
+def Test(args):
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    experiment_dir = args['--experiment_dir']
+    print_every = int(args['--print_every'])
+    num_epochs = int(args['--num_epochs'])
+    save_every = int(args['--save_every'])
+    batch_size = int(args['--batch_size'])
+    n = int(args['--n'])
+    train_split, val_split, test_split = args['--train_split'], args['--val_split'], args['--test_split']
+    data_path = args['--data_path']
+    model_path = args['--model_save_path']
+    img_directory = args['--test_img_directory']
+    noise_type = args['--noise_type']
+    ################################ Load Data ###################################################
+    dataset_total = patchesDataset(patches_path=data_path, noise_type=noise_type, n=n)
+    train_max_idx = int(train_split * len(dataset_total))
+    val_max_idx = train_max_idx + int(val_split * len(dataset_total))
+    test_max_idx = val_max_idx + int(test_split * len(dataset_total))
+    dataset_test = torch.utils.data.Subset(dataset_total, range(val_max_idx, test_max_idx))
+    dataloader_test = DataLoader(dataset_test, batch_size=batch_size)
+
+    #     print(len(dataset_test))
+    load_path = model_path
+
+    model = MW_Unet(num_conv=3, in_ch=1)
+    model.to(device)
+
+    if (load_path != None):
+        if torch.cuda.is_available():
+            print("Loading model from {}".format(load_path))
+            checkpoint = torch.load(load_path, )
+            model.load_state_dict(checkpoint['model_state_dict'])
+            # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            # epoch = checkpoint['epoch']
+            print("Model successfully loaded from {}".format(load_path))
+        else:
+            print("Loading model from {}".format(load_path))
+            checkpoint = torch.load(load_path, map_location='cpu')
+            model.load_state_dict(checkpoint['model_state_dict'])
+            # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            # epoch = checkpoint['epoch']
+            print("Model successfully loaded from {}".format(load_path))
+
+    model.eval()
+
+    print("Testing...")
+
+    test_loss = []
+    test_PSNR = []
+    test_SSIM = []
+
+    with tqdm(total=len(dataloader_test)) as pbar:
+        with torch.no_grad():
+            for index, sample in enumerate(dataloader_test):
+                target, model_input = sample['target'].type(torch.FloatTensor), sample['input'].type(torch.FloatTensor)
+                target = target.to(device)
+                model_input = model_input.to(device)
+
+                output = model.forward(model_input)
+
+                loss_fn = nn.MSELoss()
+
+                loss = loss_fn(output, target)
+                PSNR = get_PSNR(output, target)
+                SSIM = get_SSIM(output, target)
+
+                test_loss.append(loss.cpu().numpy())
+                test_PSNR.append(PSNR)
+                test_SSIM.append(SSIM)
+
+                if index == len(dataloader_test) - 1:
+                    img_grid = output.data
+                    img_grid = torchvision.utils.make_grid(img_grid)
+                    directory = img_directory
+                    save_image(img_grid, '{}test_img.png'.format(directory))
+                    input_grid = model_input.data
+                    input_grid = torchvision.utils.make_grid(input_grid)
+                    save_image(input_grid, '{}test_input_img.png'.format(directory))
+                    real_grid = target.data
+                    real_grid = torchvision.utils.make_grid(real_grid)
+                    save_image(real_grid, '{}test_real_img.png'.format(directory))
+                    print('test images')
+                    print("Input")
+                    imshow(input_grid)
+                    print("Output")
+                    imshow(img_grid)
+                    print("Real")
+                    imshow(real_grid)
+                    print("Images saved to {}".format(directory))
+                pbar.update(1)
+
+    test_loss, test_PSNR, test_SSIM = np.mean(np.array(test_loss)), np.mean(np.array(test_PSNR)), np.mean(
+        np.array(test_SSIM))
+
+    str_to_save = "Test_loss: " + str(test_loss) + " , Test PSNR: " + str(test_PSNR) + ", Test SSIM: " + str(test_SSIM)
+
+    with open(experiment_dir + "/test_results.txt", 'a') as test_writer:
+        test_writer.write(str_to_save + "\n")
+
+    return (test_loss, test_PSNR, test_SSIM)
 
 
 # load_imgs("./data/Train/")

@@ -45,3 +45,4 @@ data/Train-20190309T071729Z-003\.zip
 \.ipynb_checkpoints/Train_Test-checkpoint\.ipynb
 
 data/patches_Train\.zip
+*.npy
