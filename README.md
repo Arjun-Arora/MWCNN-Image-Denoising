@@ -1,5 +1,11 @@
 # EE367_project
 Implementation of Multi-level Wavelet-CNN for Image Restoration
+Matlab Code: 
+https://github.com/lpj0/MWCNN
+
+
+Citation: 
+Liu, Pengju, et al. "Multi-level wavelet-CNN for image restoration." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition Workshops. 2018.
 
 #Tutorial
 to install correct environment: 
