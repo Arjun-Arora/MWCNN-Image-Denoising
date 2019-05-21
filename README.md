@@ -1,4 +1,4 @@
-# EE367_project
+# Multi-level Wavelet-CNN for Image Restoration
 Implementation of Multi-level Wavelet-CNN for Image Restoration
 
 Matlab Code: 
