@@ -1,5 +1,5 @@
-# Multi-level Wavelet-CNN for Image Restoration
-Implementation of Multi-level Wavelet-CNN for Image Restoration
+# MWCNN Image Denoising
+Implementation of Multi-level Wavelet-CNN for Image Restoration in Pytorch
 
 Matlab Code: 
 
