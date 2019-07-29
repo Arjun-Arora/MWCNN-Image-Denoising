@@ -1,7 +1,7 @@
 # MWCNN Image Denoising
 Implementation of Multi-level Wavelet-CNN for Image Restoration in Pytorch
 
-Matlab Code: 
+## Matlab Code: 
 
 https://github.com/lpj0/MWCNN
 
@@ -10,7 +10,7 @@ Citation:
 
 Liu, Pengju, et al. "Multi-level wavelet-CNN for image restoration." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition Workshops. 2018.
 
-#Tutorial
+# Tutorial
 to install correct environment: 
 1. conda env create environment.yml
 2. conda activate EE367
@@ -22,10 +22,10 @@ to install correct environment:
 
 Outputs images should be saved to experiments/(model)/images/test_images folder
 
-#Note
+# Note
 If you run into out of memory errors or killed 9, you may want to change the value of "n" in runMe.py to 1000 for each of the args
 
-#TODO
+## TODO
 1. Fix dataloading code so that we don't overwhelm system memory to write patches
 2. Don't load patches to system memory, just load filenames and then read them as queried by DataLoader
 3. Retrain on entire dataset and run for longer than 6 hours
