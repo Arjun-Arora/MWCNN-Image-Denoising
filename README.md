@@ -1,6 +1,8 @@
 # MWCNN Image Denoising
 Implementation of Multi-level Wavelet-CNN for Image Restoration in Pytorch
 
+![image](./Project_Report_Files/MWCNN_Poster.png)
+
 ## Matlab Code: 
 
 https://github.com/lpj0/MWCNN
