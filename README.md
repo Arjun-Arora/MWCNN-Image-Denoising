@@ -30,5 +30,4 @@ If you run into out of memory errors or killed 9, you may want to change the val
 ## TODO
 1. Fix dataloading code so that we don't overwhelm system memory to write patches
 2. Don't load patches to system memory, just load filenames and then read them as queried by DataLoader
-3. Retrain on entire dataset and run for longer than 6 hours
 
